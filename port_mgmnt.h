@@ -16,7 +16,9 @@ extern "C" {
     extern void pin_cfg(int pinnummer, char mode, char richtung);
     extern void pullup_cfg(int pinnummer, int state);
     extern void rpin_cfg(int pinnummer, int mode, char richtung);
-
+    extern void cn_cfg(int pinnummer, int state);
+    extern void __attribute__((__interrupt__, no_auto_psv)) _CNInterrupt(void);
+    extern int cn_value[2];
 
 #ifdef	__cplusplus
 }

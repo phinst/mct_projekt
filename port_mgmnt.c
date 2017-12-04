@@ -1,6 +1,8 @@
 #include "port_mgmnt.h"
 #include "p33FJ128GP802.h"
 //Prozessorspezifische Headerdatei
+#include "read_write.h"
+#include "timer_mgmnt.h"
 
 //Port A: 5 Pins (0-4), TRISA Register
 //Eingang 1, Ausgang 0
@@ -15,7 +17,11 @@
 
 //Aus- und Eingänge von 16 Pins (RP0-15) können per Multiplexer verschiedenen Peripherienaus- und eingängen zugewiesen werden.
 //Sicherhaltshalber muss während des Remappings das IOLOCK Bit des OSCCON Registers null gesetzt werden.
-//
+
+int cn_value[2] = {0, 0};
+//CN Variable
+//[0]: confirmed flag
+//[1]: Pinnummer
 
 void clr_ports() {
     //Analoge Pins digital setzten
@@ -470,4 +476,240 @@ void rpin_cfg(int pinnummer, int mode, char richtung){
     }
     __builtin_write_OSCCONL(OSCCONL | 0x40);
     //HW Lock Bit 1 setzen um das Schreiben auf Remapping Register zu verbieten
+}
+
+void cn_cfg(int pinnummer, int state){
+    //CN Register: Handbuch S.44 Table 4-2
+    //state: 0 disable, 1 enable
+    if(state == 0 || state == 1){
+        switch(pinnummer){
+            //pin 1:    /reset (/mclr)
+            case 2:     CNEN1bits.CN2IE=state;
+                        break;
+            case 3:     CNEN1bits.CN3IE=state;
+                        break;
+            case 4:     CNEN1bits.CN4IE=state;
+                        break;
+            case 5:     CNEN1bits.CN5IE=state;
+                        break;
+            case 6:     CNEN1bits.CN6IE=state;
+                        break;
+            case 7:     CNEN1bits.CN7IE=state;
+                        break;
+            //pin 8:    gnd (vss)
+            case 9:     CNEN2bits.CN30IE=state;
+                        break;
+            case 10:    CNEN2bits.CN29IE=state;
+                        break;
+            case 11:    CNEN1bits.CN1IE=state;
+                        break;
+            case 12:    CNEN1bits.CN0IE=state;
+                        break;
+            //pin 13:   vdd (3.3V)
+            case 14:    CNEN2bits.CN27IE=state;
+                        break;
+            case 15:    CNEN2bits.CN24IE=state;
+                        break;
+            case 16:    CNEN2bits.CN23IE=state;
+                        break;
+            case 17:    CNEN2bits.CN22IE=state;
+                        break;
+            case 18:    CNEN2bits.CN21IE=state;
+                        break;
+            //pin 19:   gnd (vss2)
+            //pin 20:   vcap
+            case 21:    CNEN2bits.CN16IE=state;
+                        break;
+            case 22:    CNEN1bits.CN15IE=state;
+                        break;
+            case 23:    CNEN1bits.CN14IE=state;
+                        break;
+            case 24:    CNEN1bits.CN13IE=state;
+                        break;
+            case 25:    CNEN1bits.CN12IE=state;
+                        break;
+            case 26:    CNEN1bits.CN11IE=state;
+                        break;
+            //pin 27:   avss
+            //pin 28:   avdd            
+        }
+        if(!CNEN1 && !CNEN2){
+            //Falls kein CN bit gesetzt kann CN deaktiviert werden
+            IEC1bits.CNIE=0;
+            //CN Interrupt Enable bit IEC1.CNIE: 0 disabled, 1 enabled
+            IPC4bits.CNIP=0x0;
+            //CN Interrupt Priority bits IPC4.CNIP: 000 disabled, 001 priority 1, ..., 111 priority 7 (highest)IFS1bits.CNIF = 0;
+        }
+        else if(CNEN1 || CNEN2){
+            //Falls CN genutzt werden soll muss CN aktiviert sein
+            if(!IEC1bits.CNIE) IEC1bits.CNIE=1;
+            //CN Interrupt Enable bit IEC1.CNIE: 0 disabled, 1 enabled
+            if(!IPC4bits.CNIP) IPC4bits.CNIP=0x1;
+            //CN Interrupt Priority bits IPC4.CNIP: 000 disabled, 001 priority 1, ..., 111 priority 7 (highest)IFS1bits.CNIF = 0;
+            IFS1bits.CNIF = 0;
+            //Interrupt Flag freigeben
+        }
+    }
+}
+
+void __attribute__((__interrupt__, no_auto_psv)) _CNInterrupt(void){
+    int pinnummer=0;
+    if(CNEN1){
+        //nur Pins interessant, an denen CN aktiviert ist
+        //prüfen des ersten CN Enable Registers
+        if(CNEN1 & 0x00FF){
+            if(CNEN1 & 0x000F){
+                if(CNEN1bits.CN0IE){
+                    if(d_read(12)) pinnummer=12;
+                }
+                if(CNEN1bits.CN1IE){
+                    if(d_read(11)) pinnummer=11;
+                }
+                if(CNEN1bits.CN2IE){
+                    if(d_read(2)) pinnummer=2;
+                }
+                if(CNEN1bits.CN3IE){
+                    if(d_read(3)) pinnummer=3;
+                }
+            }
+            if(CNEN1 & 0x00F0){
+                if(CNEN1bits.CN4IE){
+                    if(d_read(4)) pinnummer=4;
+                }
+                if(CNEN1bits.CN5IE){
+                    if(d_read(5)) pinnummer=5;
+                }
+                if(CNEN1bits.CN6IE){
+                    if(d_read(6)) pinnummer=6;
+                }
+                if(CNEN1bits.CN7IE){
+                    if(d_read(7)) pinnummer=7;
+                }
+            }
+        }
+        else{
+            if(CNEN1 & 0x0F00){
+                if(CNEN1bits.CN11IE){
+                    if(d_read(26)) pinnummer=26;
+                }
+            }
+            if(CNEN1 & 0xF000){
+                if(CNEN1bits.CN12IE){
+                    if(d_read(25)) pinnummer=25;
+                }
+                if(CNEN1bits.CN13IE){
+                    if(d_read(24)) pinnummer=24;
+                }
+                if(CNEN1bits.CN14IE){
+                    if(d_read(23)) pinnummer=23;
+                }
+                if(CNEN1bits.CN15IE){
+                    if(d_read(22)) pinnummer=22;
+                }
+            }
+        }
+        /*switch(CNEN1){
+            case 0x0001:    if(d_read(12)) pinnummer=12;
+                            //Pin 12 gedrückt
+                            break;
+            case 0x0002:    if(d_read(11)) pinnummer=11;
+                            break;
+            case 0x0004:    if(d_read(2)) pinnummer=2;
+                            break;
+            case 0x0008:    if(d_read(3)) pinnummer=3;
+                            break;
+            case 0x0010:    if(d_read(4)) pinnummer=4;
+                            break;
+            case 0x0020:    if(d_read(5)) pinnummer=5;
+                            break;
+            case 0x0040:    if(d_read(6)) pinnummer=6;
+                            break;
+            case 0x0080:    if(d_read(7)) pinnummer=7;
+                            break;
+            case 0x0800:    if(d_read(26)) pinnummer=26;
+                            break;
+            case 0x1000:    if(d_read(25)) pinnummer=25;
+                            break;
+            case 0x2000:    if(d_read(24)) pinnummer=24;
+                            break;
+            case 0x4000:    if(d_read(23)) pinnummer=23;
+                            break;
+            case 0x8000:    if(d_read(22)) pinnummer=22;
+                            break;
+        }*/
+    }
+    if(CNEN2){
+        //prüfen des zweiten CN Enable Registers
+        if(CNEN2 & 0x00FF){
+            if(CNEN2 & 0x000F){
+                if(CNEN2bits.CN16IE){
+                    if(d_read(21)) pinnummer=21;
+                }
+            }
+            if(CNEN2 & 0x00F0){
+                if(CNEN2bits.CN21IE){
+                    if(d_read(18)) pinnummer=18;
+                }
+                if(CNEN2bits.CN22IE){
+                    if(d_read(17)) pinnummer=17;
+                }
+                if(CNEN2bits.CN23IE){
+                    if(d_read(16)) pinnummer=16;
+                }
+            }
+        }
+        if(CNEN2 & 0xFF00){
+            if(CNEN2 & 0x0F00){
+                if(CNEN2bits.CN24IE){
+                    if(d_read(15)) pinnummer=15;
+                }
+                if(CNEN2bits.CN27IE){
+                    if(d_read(14)) pinnummer=14;
+                }
+            }
+            if(CNEN2 & 0xF000){
+                if(CNEN2bits.CN29IE){
+                    if(d_read(10)) pinnummer=10;
+                }
+                if(CNEN2bits.CN30IE){
+                    if(d_read(9)) pinnummer=9;
+                }
+            }
+        }
+        /*switch(CNEN2){
+            case 0x0001:    if(d_read(21)) pinnummer=21;
+                            //Pin 21 gedrückt
+                            break;
+            case 0x0020:    if(d_read(18)) pinnummer=18;
+                            break;
+            case 0x0040:    if(d_read(17)) pinnummer=17;
+                            break;
+            case 0x0080:    if(d_read(16)) pinnummer=16;
+                            break;
+            case 0x0100:    if(d_read(15)) pinnummer=15;
+                            break;
+            case 0x0800:    if(d_read(14)) pinnummer=14;
+                            break;
+            case 0x2000:    if(d_read(10)) pinnummer=10;
+                            break;
+            case 0x4000:    if(d_read(9)) pinnummer=9;
+                            break;
+        }*/
+    }
+    //herausfinden, welcher Pin die CN ausgelöst hat
+    cn_value[1]=pinnummer;
+    //globales speichern der Pinnummer
+    if(!T5CONbits.TON) set_timer5(1000);
+    //Timer mit bestimmtem Wert starten z.B. 500ns bzw. zurücksetzen
+    IFS1bits.CNIF = 0;
+    //CN Interrupt Flag freigeben
+}
+
+void __attribute__((__interrupt__, no_auto_psv)) _T5Interrupt(void){
+    if(d_read(cn_value[1])) cn_value[0]=1;
+    //cn_value confirm flag setzen, falls auch nach Ablauf des Timers eine 
+    T5CONbits.TON=0;
+    //Timer 5 wieder ausschalten
+    IFS1bits.T5IF = 0;
+    //Clear Timer 5 Interrupt Flag
 }
