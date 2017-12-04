@@ -152,8 +152,8 @@ void set_timer5(int PR_value){
     //Select internal instruction cycle clock
     T5CONbits.TGATE = 0; 
     //Disable Gated Timer mode
-    T5CONbits.TCKPS = 0b01; 
-    //Select 1:8 Prescaler
+    T5CONbits.TCKPS = 0b10; 
+    //Select Prescaler
     TMR5 = 0x00; 
     //Clear Timer 5 register
     PR5 = PR_value; 
@@ -162,10 +162,8 @@ void set_timer5(int PR_value){
     //Select internal instruction cycle clock
     T5CONbits.TGATE = 0; 
     //Disable Gated Timer mode
-    T5CONbits.TCKPS = 0b01; 
-    //Select 1:8 Prescaler
     IPC7bits.T5IP = 0x01; 
-    //Set Timer 4 Interrupt Priority Level
+    //Set Timer 5 Interrupt Priority Level
     IFS1bits.T5IF = 0; 
     //Clear Timer 5 Interrupt Flag
     IEC1bits.T5IE = 1; 
