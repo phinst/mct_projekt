@@ -21,10 +21,8 @@ extern "C" {
 #define I2C_OK              1
 
 extern void i2c_init(void);
-extern int setBaudRate(void);
 extern int I2C_WriteReg(char dev_addr, char reg_addr, char value);
 extern int I2C_ReadReg(char dev_addr, char reg_addr, char *value);
-    
 
 #ifdef	__cplusplus
 }
