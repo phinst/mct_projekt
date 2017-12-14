@@ -41,6 +41,7 @@
 
 #include "i2c_mgmnt.h"
 #include "p33FJ128GP802.h"
+#include "port_mgmnt.h"
 
 void i2c_init(void) { 
     //I2C1BRG = [( 1/Fscl - PGD)*Fcy/2]-2 = 195,4
@@ -80,7 +81,7 @@ int i2c_start(void){
 int i2c_restart(void){
     IFS1bits.MI2C1IF = 0;
     //löschen des Interrpt Flags
-    while(I2C1CON && 0x001F);
+    while(I2C1CON & 0x001F);
     //untere fünf Bit des Control Registers müssen null sein, sonst kein Restart zulässig
     I2C1CONbits.RSEN = 1;
     //send I2C restart condition
@@ -100,7 +101,7 @@ int i2c_restart(void){
 int i2c_stop(void){
     IFS1bits.MI2C1IF = 0;
     //löschen des Interrpt Flags
-    while(I2C1CON && 0x001F);
+    while(I2C1CON & 0x001F);
     //untere fünf Bit des Control Registers müssen null sein, sonst kein Stop zulässig
     I2C1CONbits.PEN = 1;
     //send I2C start condition
@@ -139,7 +140,7 @@ void i2c_ack(int yn){
     //yn: 0 send ACK, 1 send NACK
     I2C1CONbits.ACKDT=yn;
     //entweder ACK oder NACK senden
-    while(I2C1CON && 0x001F);
+    while(I2C1CON & 0x001F);
     //untere fünf Bit des Control Registers müssen null sein, sonst kein Lesen zulässig
     IFS1bits.MI2C1IF = 0;
     //IF der I2C  Master Events klären
@@ -154,11 +155,11 @@ void i2c_ack(int yn){
 char i2c_read(char deviceid){
     char buffer=0;
     //Speicher für den Rückgabewert
-    while(I2C1CON && 0x001F);
+    while(I2C1CON & 0x001F);
     //untere fünf Bit des Control Registers müssen null sein, sonst kein Lesen zulässig
     i2c_restart();
     //Neustart des Bus
-    deviceid = (deviceid << 1) && 0x01;
+    deviceid = (deviceid << 1) | 0x01;
     //R/!W Bit 1: master rx, slave tx
     i2c_write(deviceid);
     //Schreiben des Adressbytes mit geändertem R/!W Bit
