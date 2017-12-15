@@ -62,7 +62,7 @@ void i2c_init(void) {
 
 int i2c_start(void){
     IFS1bits.MI2C1IF = 0;
-    //löschen des Interrpt Flags//untere fünf Bit des Control Registers müssen null sein, sonst kein Start zulässig
+    //löschen des Interrpt Flags
     I2C1CONbits.SEN = 1;
     //send I2C start condition
     while(!IFS1bits.MI2C1IF == 1);
@@ -152,8 +152,13 @@ void i2c_ack(int yn){
     //IF der I2C  Master Events klären
 }
 
-char i2c_read(char deviceid){
-    char buffer=0;
+char i2c_read(char deviceid, int bits){
+    //bits: 8 empfangen von 8 Bit, 16 empfangen von 16 Bit
+    //Diese Funktion kann entweder 8 oder 16 Bit empfangen.
+    //Mehr ist in unserem Fall nicht notwendig, da unsere Slaves eher 
+    //16 Bit oder kleinere Register haben.
+    
+    unsigned char buffer=0;
     //Speicher für den Rückgabewert
     while(I2C1CON & 0x001F);
     //untere fünf Bit des Control Registers müssen null sein, sonst kein Lesen zulässig
@@ -163,18 +168,37 @@ char i2c_read(char deviceid){
     //R/!W Bit 1: master rx, slave tx
     i2c_write(deviceid);
     //Schreiben des Adressbytes mit geändertem R/!W Bit
-    I2C1CONbits.RCEN=1;
-    //ready to receive
     IFS1bits.MI2C1IF = 0;
     //IF der I2C  Master Events klären
+    I2C1CONbits.RCEN=1;
+    //ready to receive
 	while(!IFS1bits.MI2C1IF == 1);
     //warten auf interrupt flag zur Bestätigung
     buffer = I2C1RCV;
     //speichern des empfangenen Bytes
     IFS1bits.MI2C1IF = 0;
     //IF der I2C  Master Events klären
-    i2c_ack(0);
-    //senden eines acknowledge
+    
+    if(bits == 16){
+        i2c_ack(0);
+        //falls empfangene Nachricht nicht komplett: senden eines acknowledge
+        IFS1bits.MI2C1IF = 0;
+        //IF der I2C  Master Events klären
+        I2C1CONbits.RCEN=1;
+        //ready to receive
+        buffer << 8;
+        //Platz machen für die nächsten 8 Bit
+        while(!IFS1bits.MI2C1IF == 1);
+        //warten auf interrupt flag zur Bestätigung
+        buffer = buffer + I2C1RCV;
+        //speichern des empfangenen Bytes
+        IFS1bits.MI2C1IF = 0;
+        //IF der I2C  Master Events klären
+    }
+    
+    i2c_ack(1);
+    //falls empfangene Nachricht komplett: senden eines not acknowledge
+    
 	return buffer;
     //Rückgabe des empfangenen Wertes
 }
