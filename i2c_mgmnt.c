@@ -152,7 +152,7 @@ void i2c_ack(int yn){
     //IF der I2C  Master Events klären
 }
 
-char i2c_read(char deviceid, int bits){
+char i2c_read(int bits){
     //bits: 8 empfangen von 8 Bit, 16 empfangen von 16 Bit
     //Diese Funktion kann entweder 8 oder 16 Bit empfangen.
     //Mehr ist in unserem Fall nicht notwendig, da unsere Slaves eher 
@@ -162,12 +162,6 @@ char i2c_read(char deviceid, int bits){
     //Speicher für den Rückgabewert
     while(I2C1CON & 0x001F);
     //untere fünf Bit des Control Registers müssen null sein, sonst kein Lesen zulässig
-    i2c_restart();
-    //Neustart des Bus
-    deviceid = (deviceid << 1) | 0x01;
-    //R/!W Bit 1: master rx, slave tx
-    i2c_write(deviceid);
-    //Schreiben des Adressbytes mit geändertem R/!W Bit
     IFS1bits.MI2C1IF = 0;
     //IF der I2C  Master Events klären
     I2C1CONbits.RCEN=1;
