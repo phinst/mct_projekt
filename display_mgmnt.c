@@ -9,15 +9,98 @@
  * I2C Datenword hat 8 Bit, wovon die unteren vier Bit für die Steuerung 
  * des Displays parallel an das HD44780U weitergegeben werden. Die oberen
  * drei Bit sind das enable, register select und das r/w Bit!
- * Bit 6: RS, Bit 5: RW, Bit 4: E, Bit 3: D7, Bit 2: D6, Bit 1: D5, Bit 0: D4
  * 
+ * Die Frage ist, wo am IO Port des Displays das LSB des seriellen Datenwortes ausgegeben wird.
+ * Pins am Display:     x   x   x   RS  RW  E   DB0 DB1 DB2 DB3 DB4 DB5 DB6 DB7 x   x
+ * Pins vom PCF8574AT:              P6  P5  P4                  P0  P1  P2  P3
+ * ==> Datenwort muss wie folgt an den PCF8574AT Übertragen werden: (MSB) x RS RW E DB7 DB6 DB5 DB4 (LSB)
+ *  
+ * Display muss also im 4 Bit Mode betrieben werden:
+ * Es werden nur DB7-DB4 genutzt, 8 Bit Daten werden als zwei mal 4 Bit übertragen,
+ * wobei erst die oberen und dann die unteren Bits gesendet werden. Nach jedem Paar 4 Bit 
+ * Daten muss die Busy Flag abgefragt werden.
+ * 
+ * Das Display wird anfangs durch den Internal Reset Circuit mit verschiedenen Parametern initialisiert.
+ * Für unseren Zweck müssen wir ein paar dieser Parameter ändern (siehe display_init).
+ * 
+ * Grundlegende Befehle:
+ * RS 0, RW 0: Instruction Register write as internal operation
+ * RS 0, RW 1: Read Busy Flag and AC (DB0 bis DB7)
+ * RS 1, RW 0: Data Register write as internal operation
+ * RS 1, RW 1: Data Register read as internal operation
+ *
  */
+
+int check_bf(char deviceid){
+    //ließt des Status des busy flags aus und übergibt ihn
+    
+    unsigned char bf=0;
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write(0b00110000);
+    //Schreiben der busy flag read instruction
+    //setzen des enable bits gleichzeitig mit dem Rest. Eventuell früher nötig?
+    i2c_restart();
+    //Neustart des Bus
+    i2c_write((deviceid << 1) | 0x1);
+    //ansprechen des Slaves mit Lesebefehl
+    bf=i2c_read(8);
+    //Funktion muss auch vor dem Einstellen der 4 Bit operation funktionieren
+    //eigentlich nur die oberen 4 Bit interessant, deshalb nur einmaliges Lesen
+    //zurückgegebene Bits entsprechen: x RS RW E DB7 DB6 DB5 DB4
+    i2c_restart();
+    //Neustart des Bus
+    if(bf & 0x08) return 1;
+    //busy flag up!
+    else return 0;
+    //no busy flag
+}
+
 int display_clear(char deviceid){
     //leert das gesamte Display 
 }
 
 int display_init(char deviceid){
-    //initiiert das LCD und führt einen clear aus  
+    //initiiert das LCD und führt einen clear aus
+    
+    i2c_start();
+    //starten des i2c Bus
+    while(check_bf);
+    //wait for busy flag to clear
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write(0b00010010);
+    //übertragen einer Function set Anweisung
+    //4 Bit Mode
+    while(check_bf);
+    //wait for busy flag to clear
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write(0b00010010);
+    //übertragen einer Function set Anweisung
+    //4 Bit Mode
+    i2c_write(0b00010000);
+    //übertragen einer Function set Anweisung
+    //display parameter
+    while(check_bf);
+    //wait for busy flag to clear
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write(0b00010000);
+    //übertragen einer Function set Anweisung
+    i2c_write(0b00011110);
+    //übertragen einer Function set Anweisung
+    //cursor & display turn on
+    while(check_bf);
+    //wait for busy flag to clear
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write(0b00010000);
+    //übertragen einer Function set Anweisung
+    i2c_write(0b00010110);
+    //übertragen einer Function set Anweisung
+    //entry mode set
+    i2c_stop();
 }
 
 int display_write(char deviceid, char *text){
