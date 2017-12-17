@@ -76,10 +76,10 @@ int check_bf(char deviceid){
     //no busy flag
 }
 
-int display_clear(char deviceid){
+void display_clear(char deviceid){
     //leert das gesamte Display
 
-    while(check_bf);
+    while(check_bf(deviceid));
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
@@ -90,19 +90,19 @@ int display_clear(char deviceid){
     //display clear
 }
 
-int display_init(char deviceid){
+void display_init(char deviceid){
     //initiiert das LCD und führt einen clear aus
     
     i2c_start();
     //starten des i2c Bus
-    while(check_bf);
+    while(check_bf(deviceid));
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
     i2c_write(0b00010010);
     //übertragen einer function set Anweisung
     //4 Bit Mode
-    while(check_bf);
+    while(check_bf(deviceid));
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
@@ -111,7 +111,7 @@ int display_init(char deviceid){
     i2c_write(0b00011000);
     //übertragen der function set Anweisung Teil 2
     //4 Bit mode, 2 lines, 5x8 dots
-    while(check_bf);
+    while(check_bf(deviceid));
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
@@ -120,7 +120,7 @@ int display_init(char deviceid){
     i2c_write(0b00011110);
     //übertragen einer instruction set Anweisung Teil 2
     //display & cursor on, blinking cursor off
-    while(check_bf);
+    while(check_bf(deviceid));
     //wait for busy flag to clear 
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
@@ -137,4 +137,5 @@ int display_init(char deviceid){
 
 int display_write(char deviceid, char *text){
     //schreibt eine Abfolge von Zeichen sequentiell auf das Display
+    return 1;
 }

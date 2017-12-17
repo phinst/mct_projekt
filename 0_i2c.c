@@ -7,7 +7,7 @@
 #include "system_init.h"
 //#include "read_write.h"
 //#include "timer_mgmnt.h"
-//#include "i2c_mgmnt.h"
+#include "i2c_mgmnt.h"
 #include "clk_mgmnt.h"
 #include "display_mgmnt.h"
 //custom headers

@@ -180,7 +180,7 @@ char i2c_read(int bits){
         //IF der I2C  Master Events klären
         I2C1CONbits.RCEN=1;
         //ready to receive
-        buffer << 8;
+        buffer = buffer << 8;
         //Platz machen für die nächsten 8 Bit
         while(!IFS1bits.MI2C1IF == 1);
         //warten auf interrupt flag zur Bestätigung

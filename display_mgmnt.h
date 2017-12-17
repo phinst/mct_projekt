@@ -12,8 +12,8 @@
 extern "C" {
 #endif
 
-    extern int display_clear(char deviceid);
-    extern int display_init(char deviceid);
+    extern void display_clear(char deviceid);
+    extern void display_init(char deviceid);
 
 
 #ifdef	__cplusplus
