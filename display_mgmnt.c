@@ -29,6 +29,26 @@
  * RS 1, RW 0: Data Register write as internal operation
  * RS 1, RW 1: Data Register read as internal operation
  *
+ * function set Befehl:
+ * RS   RW  DB7 DB6 DB5 DB4 DB3 DB2 DB1 DB0
+ * 0    0   0   0   1   DL  N   F   x   x
+ * DL data/interface length: 1 8 Bit, 0 4 Bit
+ * N number of display lines: 1 2 lines, 0 1 line
+ * F character font: 1 5x10 dots, 0 5x8 dots
+ * 
+ * display control Befehl:
+ * RS   RW  DB7 DB6 DB5 DB4 DB3 DB2 DB1 DB0
+ * 0    0   0   0   0   0   1   D   C   B
+ * D display on/off
+ * C cursor on/offRS
+ * B blinking cursor on/off
+ * 
+ * entry mode Befehl:
+ * RS   RW  DB7 DB6 DB5 DB4 DB3 DB2 DB1 DB0
+ * 0    0   0   0   0   0   0   1   I/D S
+ * I/D: 0 decrement, 1 increment
+ * S: 1 accompanies display shift
+ * 
  */
 
 int check_bf(char deviceid){
@@ -57,7 +77,17 @@ int check_bf(char deviceid){
 }
 
 int display_clear(char deviceid){
-    //leert das gesamte Display 
+    //leert das gesamte Display
+
+    while(check_bf);
+    //wait for busy flag to clear
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write(0b00010000);
+    //übertragen einer instruction set Anweisung Teil 1
+    i2c_write(0b00010001);
+    //übertragen einer instruction set Anweisung Teil 2
+    //display clear
 }
 
 int display_init(char deviceid){
@@ -70,36 +100,38 @@ int display_init(char deviceid){
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
     i2c_write(0b00010010);
-    //übertragen einer Function set Anweisung
+    //übertragen einer function set Anweisung
     //4 Bit Mode
     while(check_bf);
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
     i2c_write(0b00010010);
-    //übertragen einer Function set Anweisung
-    //4 Bit Mode
-    i2c_write(0b00010000);
-    //übertragen einer Function set Anweisung
-    //display parameter
+    //übertragen der function set Anweisung Teil 1
+    i2c_write(0b00011000);
+    //übertragen der function set Anweisung Teil 2
+    //4 Bit mode, 2 lines, 5x8 dots
     while(check_bf);
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
     i2c_write(0b00010000);
-    //übertragen einer Function set Anweisung
+    //übertragen einer instruction set Anweisung Teil 1
     i2c_write(0b00011110);
-    //übertragen einer Function set Anweisung
-    //cursor & display turn on
+    //übertragen einer instruction set Anweisung Teil 2
+    //display & cursor on, blinking cursor off
     while(check_bf);
-    //wait for busy flag to clear
+    //wait for busy flag to clear 
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
     i2c_write(0b00010000);
-    //übertragen einer Function set Anweisung
+    //übertragen einer instruction set Anweisung Teil 1
     i2c_write(0b00010110);
-    //übertragen einer Function set Anweisung
+    //übertragen einer instruction set Anweisung Teil 2
     //entry mode set
+
+    display_clear(deviceid);
+    //execute display clear
     i2c_stop();
 }
 
