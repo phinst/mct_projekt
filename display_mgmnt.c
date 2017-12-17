@@ -6,14 +6,14 @@
 
 /*I2C Backpack: PCF8574AT, K44001, 05, KNM00463
  *standard I2C Adresse des PCF8574AT ICs ist 0x3F
- * I2C Datenword hat 8 Bit, wovon die unteren vier Bit für die Steuerung 
- * des Displays parallel an das HD44780U weitergegeben werden. Die oberen
- * drei Bit sind das enable, register select und das r/w Bit!
+ * I2C Datenword hat 8 Bit, wovon die oberen vier Bit für die Steuerung 
+ * des Displays parallel an das HD44780U weitergegeben werden. Die unteren
+ * drei Bit sind das enable, register select und das r/w Bit, Bit 4 liegt auf Masse!
  * 
  * Die Frage ist, wo am IO Port des Displays das LSB des seriellen Datenwortes ausgegeben wird.
- * Pins am Display:     x   x   x   RS  RW  E   DB0 DB1 DB2 DB3 DB4 DB5 DB6 DB7 x   x
- * Pins vom PCF8574AT:              P6  P5  P4                  P0  P1  P2  P3
- * ==> Datenwort muss wie folgt an den PCF8574AT Übertragen werden: (MSB) x RS RW E DB7 DB6 DB5 DB4 (LSB)
+ * Pins am Display:     VSS   x   x   RS  RW  E   DB0 DB1 DB2 DB3 DB4 DB5 DB6 DB7 x   x
+ * Pins vom PCF8574AT:  P3            P0  P1  P2                  P4  P5  P6  P7
+ * ==> Datenwort muss wie folgt an den PCF8574AT Übertragen werden: (MSB) DB7 DB6 DB5 DB4 x E RW RS (LSB)
  *  
  * Display muss also im 4 Bit Mode betrieben werden:
  * Es werden nur DB7-DB4 genutzt, 8 Bit Daten werden als zwei mal 4 Bit übertragen,
@@ -57,7 +57,7 @@ int check_bf(char deviceid){
     unsigned char bf=0;
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(0b00110000);
+    i2c_write(0b00000110);
     //Schreiben der busy flag read instruction
     //setzen des enable bits gleichzeitig mit dem Rest. Eventuell früher nötig?
     i2c_restart();
@@ -83,9 +83,9 @@ void display_clear(char deviceid){
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(0b00010000);
+    i2c_write(0b00000100);
     //übertragen einer instruction set Anweisung Teil 1
-    i2c_write(0b00010001);
+    i2c_write(0b00010100);
     //übertragen einer instruction set Anweisung Teil 2
     //display clear
 }
@@ -99,34 +99,34 @@ void display_init(char deviceid){
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(0b00010010);
+    i2c_write(0b00100100);
     //übertragen einer function set Anweisung
     //4 Bit Mode
     while(check_bf(deviceid));
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(0b00010010);
+    i2c_write(0b00100100);
     //übertragen der function set Anweisung Teil 1
-    i2c_write(0b00011000);
+    i2c_write(0b10000100);
     //übertragen der function set Anweisung Teil 2
     //4 Bit mode, 2 lines, 5x8 dots
     while(check_bf(deviceid));
     //wait for busy flag to clear
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(0b00010000);
+    i2c_write(0b00000100);
     //übertragen einer instruction set Anweisung Teil 1
-    i2c_write(0b00011110);
+    i2c_write(0b11100100);
     //übertragen einer instruction set Anweisung Teil 2
     //display & cursor on, blinking cursor off
     while(check_bf(deviceid));
     //wait for busy flag to clear 
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(0b00010000);
+    i2c_write(0b00000100);
     //übertragen einer instruction set Anweisung Teil 1
-    i2c_write(0b00010110);
+    i2c_write(0b00000110);
     //übertragen einer instruction set Anweisung Teil 2
     //entry mode set
 
