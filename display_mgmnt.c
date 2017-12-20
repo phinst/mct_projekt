@@ -6,9 +6,6 @@
 #include "port_mgmnt.h"
 //custom headers
 
-int waitfor = 1;
-int timecount = 0;
-
 /*I2C Backpack: PCF8574AT, K44001, 05, KNM00463
  *standard I2C Adresse des PCF8574AT ICs ist 0x3F
  * I2C Datenword hat 8 Bit, wovon die unteren vier Bit für die Steuerung 
@@ -56,188 +53,197 @@ int timecount = 0;
  * 
  */
 
-void display_send(unsigned int data){
-    //data: 8 Bit, MSB DB7 ... DB0 LSB
-    //nur instructions: RS 0, RW 0
-    
-    i2c_write((data & 0xF0) | 0x04);
-    //übertragen der der oberen Bit mit E high
-    set_timer4(0, 1, 16);
-    while(timecount == 0);
-    timecount = 0;
-    T4CONbits.TON = 0;      
-    //Disable Timer 4
-    i2c_write(data & 0xF0);
-    //übertragen der der oberen Bit mit E low
-    set_timer4(0, 250, 16);
-    while(timecount == 0);
-    timecount = 0;
-    T4CONbits.TON = 0;      
-    //Disable Timer 4
-    i2c_write((data<<4) | 0x04);
-    //übertragen der der unteren Bit mit E high
-    set_timer4(0, 1, 16);
-    while(timecount == 0);
-    timecount = 0;
-    T4CONbits.TON = 0;      
-    //Disable Timer 4
-    i2c_write(data<<4);
-    //übertragen der der unteren Bit mit E low
-    set_timer4(0, 250, 16);
-    while(timecount == 0);
-    timecount = 0;
-    T4CONbits.TON = 0;      
-    //Disable Timer 4
-}
+#define BACKLIGHT 0x08
+#define ENABLE 0x04
+#define RW 0x02
+#define RS 0x01
 
-int check_bf(char deviceid){
-    //ließt des Status des busy flags aus und übergibt ihn
-    
-    unsigned char bf=0;
-    i2c_write(deviceid << 1);
-    //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(0b00000110);
-    //Schreiben der busy flag read instruction
-    //setzen des enable bits gleichzeitig mit dem Rest. Eventuell früher nötig?
-    i2c_restart();
-    //Neustart des Bus
-    i2c_write((deviceid << 1) | 0x1);
-    //ansprechen des Slaves mit Lesebefehl
-    bf=i2c_read(8);
-    //Funktion muss auch vor dem Einstellen der 4 Bit operation funktionieren
-    //eigentlich nur die oberen 4 Bit interessant, deshalb nur einmaliges Lesen
-    //zurückgegebene Bits entsprechen: x RS RW E DB7 DB6 DB5 DB4
-    i2c_restart();
-    //Neustart des Bus
-    if(bf & 0x80) return 1;
-    //busy flag up!
-    else return 0;
-    //no busy flag
-}
+int waitfor = 1;
+int timecount = 0;
 
-void display_clear(char deviceid){
-    //leert das gesamte Display
-
-    while(check_bf(deviceid));
-    //wait for busy flag to clear
-    i2c_write(deviceid << 1);
-    //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(0b00000100);
-    //übertragen einer instruction set Anweisung Teil 1
-    i2c_write(0b00010100);
-    //übertragen einer instruction set Anweisung Teil 2
-    //display clear
-}
-
-void display_init(char deviceid){
-    //initiiert das LCD und führt einen clear aus
+void waitXus(int val){
     //Werte für das Warten mit Timer 4:
-    //25000 5 ms
-    //600 120us
-    //250 50us
+    //21500: 4,3 ms
+    //600: 120us
+    //250: 50us
+    
     timecount = 0;
-    
-    set_timer4(0, 25000, 16);
-    while(timecount < 10);
+    set_timer4(0, val, 16);
+    while (timecount == 0);
     timecount = 0;
-    //40ms warten
-    T4CONbits.TON = 0;      
+    T4CONbits.TON = 0;
     //Disable Timer 4
-    i2c_start();
-    //starten des i2c Bus
-    i2c_write(deviceid << 1);
-    //ansprechen des Slaves mit Schreibbefehl
-    
-    i2c_write(0b00110100);
-    //übertragen einer function set Anweisung
-    i2c_write(0b00110000);
-    //übertragen einer function set Anweisung
-    
-    i2c_stop();
-    set_timer4(0, 25000, 16);
-    while(!timecount);
-    timecount=0;
-    //4,3ms warten
-    T4CONbits.TON = 0;      
-    //Disable Timer 4
-    i2c_start();
-    //starten des i2c Bus
-    i2c_write(deviceid << 1);
-    //ansprechen des Slaves mit Schreibbefehl
-    
-    i2c_write(0b00110100);
-    //übertragen einer function set Anweisung
-    i2c_write(0b00110000);
-    //übertragen einer function set Anweisung
-    
-    i2c_stop();
-    set_timer4(0, 600, 16);
-    while(!timecount);
-    timecount=0;
-    //100us warten
-    T4CONbits.TON = 0;      
-    //Disable Timer 4
-    
-    
-    i2c_start();
-    //starten des i2c Bus
-    i2c_write(deviceid << 1);
-    //ansprechen des Slaves mit Schreibbefehl
-    
-    i2c_write(0b00110100);
-    //übertragen einer function set Anweisung
-    i2c_write(0b00110000);
-    //übertragen einer function set Anweisung
-    
-    while(check_bf(deviceid));
-    //wait for busy flag to clear
-    
-    i2c_write(deviceid << 1);
-    //ansprechen des Slaves mit Schreibbefehl
-    display_send(0b00111000);
-    //übertragen der function set Anweisung
-    //4 Bit mode, 2 lines, 5x8 dots
-    while(check_bf(deviceid));
-    //wait for busy flag to clear
-    i2c_write(deviceid << 1);
-    //ansprechen des Slaves mit Schreibbefehl
-    display_send(0b00001000);
-    //übertragen einer instruction set Anweisung
-    //display & cursor off, blinking cursor off
-    
-    display_clear(deviceid);
-    
-    while(check_bf(deviceid));
-    //wait for busy flag to clear
-    
-    i2c_write(deviceid << 1);
-    //ansprechen des Slaves mit Schreibbefehl
-    display_send(0b00000110);
-    //übertragen einer instruction set Anweisung
-    //entry mode set
-    
-    
-    i2c_stop();
-    set_timer4(0, 25000, 16);
-    while(timecount < 10);
-    timecount = 0;
-    //40ms warten
-    T4CONbits.TON = 0;  
 }
 
-void __attribute__((__interrupt__, no_auto_psv)) _T4Interrupt(void){
-    
-    waitfor=0;
+void __attribute__((__interrupt__, no_auto_psv)) _T4Interrupt(void) {
+
+    waitfor = 0;
     timecount++;
-    
-    //d_write(25, ~d_read(25));
+
     //T4CONbits.TON = 0;
     //Timer 4 wieder ausschalten
     IFS1bits.T4IF = 0;
     //Clear Timer 4 Interrupt Flag
 }
 
-int display_write(char deviceid, char *text){
+void send_8(char deviceid, unsigned int data, int type){
+    //data: 8 Bit, MSB DB7 ... DB0 LSB
+    //type: 0 instructions (RW 0, RS 0), 1 DDRAM (RW 0, RS 1)
+
+    char select = 0;
+    if(type) select = RS;
+    //
+    
+    i2c_start();
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write((data & 0xF0) | ENABLE | BACKLIGHT | select);
+    //übertragen der der oberen Bit mit E high
+    
+    waitXus(1);
+    
+    i2c_write((data & 0xF0) | BACKLIGHT | select);
+    //übertragen der der oberen Bit mit E low
+    
+    waitXus(1);
+    
+    i2c_write((data << 4) | ENABLE | BACKLIGHT | select);
+    //übertragen der der unteren Bit mit E high
+    
+    waitXus(1);
+    
+    i2c_write((data << 4) | BACKLIGHT | select);
+    //übertragen der der unteren Bit mit E low
+    i2c_stop();
+    
+    waitXus(250);
+}
+
+void send_4(char deviceid, unsigned int data, int type) {
+    //data: 4 Bit, MSB DB7 ... DB5 LSB
+    //type: 0 instructions (RW 0, RS 0), 1 DDRAM (RW 0, RS 1)
+    
+    char select = 0;
+    if(type) select = RS;
+    
+    i2c_start();
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write((data << 4) | ENABLE | BACKLIGHT | select);
+    //übertragen der der oberen Bit mit E high
+    
+    waitXus(1);
+    
+    i2c_write((data << 4) | BACKLIGHT | select);
+    //übertragen der der oberen Bit mit E low
+    i2c_stop();
+    
+    waitXus(250);
+}
+
+int check_bf(char deviceid) {
+    //ließt des Status des busy flags aus und übergibt ihn
+
+    unsigned char bf = 0;
+    
+    i2c_start();
+    //starten des Bus
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write(0x00 | ENABLE | RW);
+    //Schreiben der busy flag read instruction mit enable high
+    
+    waitXus(1);
+    
+    i2c_write(0x00 | RW);
+    //Schreiben der busy flag read instruction mit enable low
+    
+    waitXus(1);
+    
+    i2c_restart();
+    //Neustart des Bus
+    i2c_write((deviceid << 1) | 0x01);
+    //ansprechen des Slaves mit Lesebefehl
+    bf = i2c_read(8);
+    //Funktion muss auch vor dem Einstellen der 4 Bit operation funktionieren
+    //eigentlich nur die oberen 4 Bit interessant, deshalb nur einmaliges Lesen
+    //zurückgegebene Bits entsprechen: x RS RW E DB7 DB6 DB5 DB4
+    i2c_stop();
+    //stoppen des Bus
+    
+    waitXus(250);
+    
+    if (bf & 0x80) return 1;
+        //busy flag up!
+    else return 0;
+    //no busy flag
+}
+
+void display_clear(char deviceid) {
+    //leert das gesamte Display
+    while(check_bf(deviceid)); 
+    //wait for busy flag to clear
+    send_8(deviceid, 0x01, 0);
+}
+
+void display_init(char deviceid) {
+    //initiiert das LCD und führt einen clear aus
+    
+    timecount = 0; 
+    set_timer4(0, 25000, 16);
+    while (timecount < 10);
+    //warte auf betriebsspannung ~50ms
+    T4CONbits.TON = 0;
+    //Disable Timer 4
+    timecount = 0;
+
+    send_4(deviceid, 0b0011, 0);       
+    waitXus(21500);
+    //warte auf Verarbeitung
+    
+    send_4(deviceid, 0b0011, 0);     
+    waitXus(21500);
+    //warte auf Verarbeitung
+    
+    send_4(deviceid, 0b0011, 0);  
+    waitXus(21500);
+    //warte auf Verarbeitung
+
+    send_4(deviceid, 0b0011, 0);
+    waitXus(21500);
+    //warte auf Verarbeitung
+    
+    send_4(deviceid, 0b0010, 0);
+    waitXus(21500);
+    //warte auf Verarbeitung
+    
+    while(check_bf(deviceid));
+    //wait for busy flag to clear
+
+    send_8(deviceid, 0b00111000, 0);
+    //übertragen der function set Anweisung
+    //4 Bit mode, 2 lines, 5x8 dots
+    
+    while(check_bf(deviceid));
+    //wait for busy flag to clear
+    
+    send_8(deviceid, 0b00001111, 0);
+    //übertragen einer instruction set Anweisung
+    //display & cursor on, blinking cursor on
+
+    display_clear(deviceid);
+
+    while(check_bf(deviceid));
+    //wait for busy flag to clear
+
+    send_8(deviceid, 0b00000111, 0);
+    //übertragen einer instruction set Anweisung
+    //entry mode set
+
+    waitXus(21500);
+}
+
+int display_write(char deviceid, char *text) {
     //schreibt eine Abfolge von Zeichen sequentiell auf das Display
     return 1;
 }
