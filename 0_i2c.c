@@ -12,21 +12,36 @@
 #include "display_mgmnt.h"
 //custom headers
 
+void waitfunc() {
+    timecount = 0;
+    set_timer4(0, 25000, 16);
+    while (timecount < 100);
+    //warte auf betriebsspannung ~50ms
+    T4CONbits.TON = 0;
+    //Disable Timer 4
+    timecount = 0;
+}
+
 void main(void) {
     char deviceid = 0x3F;
 
     clk_boost(80);
     clr_ports();
     i2c_init();
+    display_init(deviceid);
     //setup
 
-    display_init(deviceid);
+    char array[] = "1234 56789";
+    char test[] = "1";
+    int cnt = sizeof (array) / sizeof (char);
+    display_clear(deviceid);
+    while (1) {
+        send_8(deviceid,60, 0);
+        send_8(deviceid,'w', 1);
+        //display_write(deviceid, test, cnt);
+        waitfunc();
 
-    while(1){
-        while(check_bf(deviceid));
 
-        char data = 0b11101101;
 
-        send_8(deviceid, data, 1);
     }
 }
