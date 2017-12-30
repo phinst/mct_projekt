@@ -699,7 +699,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _CNInterrupt(void){
     //herausfinden, welcher Pin die CN ausgelöst hat
     cn_value[1]=pinnummer;
     //globales speichern der Pinnummer
-    if(!T5CONbits.TON) set_timer5(1000);
+    if(!T5CONbits.TON) set_timer5(60000);
     //Timer mit bestimmtem Wert starten z.B. 500ns bzw. zurücksetzen
     IFS1bits.CNIF = 0;
     //CN Interrupt Flag freigeben
