@@ -90,7 +90,7 @@ void send_8(char deviceid, unsigned int data, int type) {
 
     char select = 0;
     if (type) select = RS;
-    //
+    //datenwort oder instruction?
 
     i2c_start();
     i2c_write(deviceid << 1);
@@ -112,9 +112,9 @@ void send_8(char deviceid, unsigned int data, int type) {
 
     i2c_write((data << 4) | BACKLIGHT | select);
     //übertragen der der unteren Bit mit E low
-    
+
     waitXus(250);
-    
+
     i2c_stop();
 }
 
@@ -144,20 +144,93 @@ int check_bf(char deviceid) {
     //ließt des Status des busy flags aus und übergibt ihn
 
     unsigned char bf = 0;
+    unsigned char upper = 0;
+    unsigned char lower = 0;
+    unsigned char temp = 0;
+
+    i2c_start();
+    //Neustart des Bus
+    i2c_write((deviceid << 1) | 0x01);
+    //ansprechen des Slaves mit Lesebefehl
+    temp = i2c_read(16);
+    //Funktion muss auch vor dem Einstellen der 4 Bit operation funktionieren
+    //eigentlich nur die oberen 4 Bit interessant, deshalb nur einmaliges Lesen
+    //zurückgegebene Bits entsprechen: DB7 DB6 DB5 DB4 ...
+    i2c_stop();
+    //stoppen des Bus
+    upper = temp & 0xF000;
+    upper = upper >> 8;
+    lower = temp & 0x00F0;
+    lower = lower >> 4;
+    temp = upper + lower;
 
     i2c_start();
     //starten des Bus
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(0x00 | ENABLE | RW);
+    i2c_write(upper | ENABLE | BACKLIGHT | RW);
     //Schreiben der busy flag read instruction mit enable high
 
     waitXus(1);
 
-    i2c_write(0x00 | RW);
+    i2c_write(upper | BACKLIGHT | RW);
     //Schreiben der busy flag read instruction mit enable low
 
+    waitXus(250);
+
+    i2c_write(lower | ENABLE | BACKLIGHT | RW);
+    //Schreiben der busy flag read instruction mit enable high
+
     waitXus(1);
+
+    i2c_write(lower | BACKLIGHT | RW);
+    //Schreiben der busy flag read instruction mit enable low
+
+    i2c_stop();
+
+    waitXus(250);
+
+    i2c_start();
+    //Neustart des Bus
+    i2c_write((deviceid << 1) | 0x01);
+    //ansprechen des Slaves mit Lesebefehl
+    temp = i2c_read(16);
+    //Funktion muss auch vor dem Einstellen der 4 Bit operation funktionieren
+    //eigentlich nur die oberen 4 Bit interessant, deshalb nur einmaliges Lesen
+    //zurückgegebene Bits entsprechen: DB7 DB6 DB5 DB4 ...
+    i2c_stop();
+    //stoppen des Bus
+    upper = temp & 0xF000;
+    upper = upper >> 8;
+    lower = temp & 0x00F0;
+    lower = lower >> 4;
+    temp = upper + lower;
+
+    i2c_start();
+    //starten des Bus
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    i2c_write(upper | ENABLE | BACKLIGHT);
+    //Schreiben der busy flag read instruction mit enable high
+
+    waitXus(1);
+
+    i2c_write(upper | BACKLIGHT);
+    //Schreiben der busy flag read instruction mit enable low
+
+    waitXus(250);
+
+    i2c_write(lower | ENABLE | BACKLIGHT);
+    //Schreiben der busy flag read instruction mit enable high
+
+    waitXus(1);
+
+    i2c_write(lower | BACKLIGHT);
+    //Schreiben der busy flag read instruction mit enable low
+
+    i2c_stop();
+
+    waitXus(250);
 
     i2c_restart();
     //Neustart des Bus
@@ -166,11 +239,9 @@ int check_bf(char deviceid) {
     bf = i2c_read(8);
     //Funktion muss auch vor dem Einstellen der 4 Bit operation funktionieren
     //eigentlich nur die oberen 4 Bit interessant, deshalb nur einmaliges Lesen
-    //zurückgegebene Bits entsprechen: x RS RW E DB7 DB6 DB5 DB4
+    //zurückgegebene Bits entsprechen: DB7 DB6 DB5 DB4 ...
     i2c_stop();
     //stoppen des Bus
-
-    waitXus(250);
 
     if (bf & 0x80) return 1;
         //busy flag up!
@@ -180,8 +251,10 @@ int check_bf(char deviceid) {
 
 void display_clear(char deviceid) {
     //leert das gesamte Display
-    while (check_bf(deviceid));
+    //while (check_bf(deviceid));
     //wait for busy flag to clear
+    waitXus(250);
+    
     send_8(deviceid, 0b00000001, 0);
 }
 
@@ -189,44 +262,68 @@ void display_init(char deviceid) {
     send_4(deviceid, 0b0010, 0);
     //initial 4 Bit
     //waitXus(21500);
-    while (check_bf(deviceid));
+    //while (check_bf(deviceid));
     //wait for busy flag to clear
+    waitXus(250);
 
     send_8(deviceid, 0b00101000, 0);
     //übertragen der function set Anweisung
     //4 Bit mode, 2 lines, 5x8 dots
     //waitXus(21500);
-    while (check_bf(deviceid));
+    //while (check_bf(deviceid));
     //wait for busy flag to clear
+    waitXus(250);
 
     send_8(deviceid, 0b00001110, 0);
     //übertragen einer instruction set Anweisung
     //display & cursor on, blinking cursor on
 
-    while (check_bf(deviceid));
+    //while (check_bf(deviceid));
     //wait for busy flag to clear
+    waitXus(250);
 
     send_8(deviceid, 0b00000110, 0);
     //übertragen einer instruction set Anweisung
     //entry mode set
-
+    
     display_clear(deviceid);
-
+    display_clear(deviceid);
+    //warum auch immer.
+    
 }
 
-void display_write(char deviceid, char *pointer, int cnt) {
-    //first item is length of array without first item
-    int i;
-    
-    while(check_bf(deviceid));
-    
-    for (i = 0; i < cnt-1; i++) {
+void display_write(char deviceid, char *pointer) {
+    while (*pointer) {
+        //while (check_bf(deviceid));
+        waitXus(250);
         send_8(deviceid, *pointer, 1);
         pointer++;
     }
 }
 
-void cursor_move(char deviceid, char *pointer, int cnt) {
+
+void cursor_move(char deviceid, int zeile, int stelle) {
     //setzt den cursor an eine Position nach Zeile und Spalte
-    
+    //Cursorwert 0-19 entspricht der 1. Zeile, 20-39 der 3. Zeile
+    //Cursorwert 40, 65-83 entspricht der 2. Zeile, 84-103 der 4. Zeile
+    switch (zeile) {
+        case 1:
+            stelle -= 1;
+            break;
+        case 2:
+            stelle += 63;
+            break;
+        case 3:
+            stelle += 19;
+            break;
+        case 4:
+            stelle += 83;
+            break;
+        default:
+            stelle = 0;
+            break;
+    }
+    //while(check_bf(deviceid));
+    waitXus(250);
+    send_8(deviceid, stelle | 0x80, 0);
 }

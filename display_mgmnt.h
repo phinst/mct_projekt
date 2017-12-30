@@ -14,10 +14,11 @@ extern "C" {
 
     extern void display_clear(char deviceid);
     extern void display_init(char deviceid);
-    extern void display_write(char deviceid, char *pointer, int cnt);
+    extern void display_write(char deviceid, char *pointer);
+    //extern void send_8(char deviceid, unsigned int data, int type);
+    //extern int check_bf(char deviceid);
+    extern void cursor_move(char deviceid, int zeile, int stelle);
     extern int timecount;
-    extern void send_8(char deviceid, unsigned int data, int type);
-    extern int check_bf(char deviceid);
 
 #ifdef	__cplusplus
 }

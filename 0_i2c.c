@@ -31,17 +31,10 @@ void main(void) {
     display_init(deviceid);
     //setup
 
-    char array[] = "1234 56789";
-    char test[] = "1";
-    int cnt = sizeof (array) / sizeof (char);
-    display_clear(deviceid);
+    char array[] = "Hello world!";
     while (1) {
-        send_8(deviceid,60, 0);
-        send_8(deviceid,'w', 1);
-        //display_write(deviceid, test, cnt);
-        waitfunc();
 
-
-
+        cursor_move(deviceid, 1, 20);
+        display_write(deviceid, array);
     }
 }
