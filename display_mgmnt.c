@@ -58,7 +58,9 @@
 #define RW 0x02
 #define RS 0x01
 
-int timecount = 0;
+//#define wait_by_busy
+
+/*int timecount = 0;
 
 void waitXus(int val) {
     //Werte für das Warten mit Timer 4:
@@ -82,7 +84,7 @@ void __attribute__((__interrupt__, no_auto_psv)) _T4Interrupt(void) {
     //Timer 4 wieder ausschalten
     IFS1bits.T4IF = 0;
     //Clear Timer 4 Interrupt Flag
-}
+}*/
 
 void send_8(char deviceid, unsigned int data, int type) {
     //data: 8 Bit, MSB DB7 ... DB0 LSB
@@ -98,24 +100,34 @@ void send_8(char deviceid, unsigned int data, int type) {
     i2c_write((data & 0xF0) | ENABLE | BACKLIGHT | select);
     //übertragen der der oberen Bit mit E high
 
-    waitXus(1);
+    //waitXus(1);
+    wait_us(1);
+    //1 us warten
 
     i2c_write((data & 0xF0) | BACKLIGHT | select);
     //übertragen der der oberen Bit mit E low
-
-    waitXus(250);
+    
+    //waitXus(250);
+    wait_us(50);
+    //50 us warten
 
     i2c_write((data << 4) | ENABLE | BACKLIGHT | select);
     //übertragen der der unteren Bit mit E high
 
-    waitXus(1);
+    //waitXus(1);
+    wait_us(1);
+    //1 us warten
 
     i2c_write((data << 4) | BACKLIGHT | select);
     //übertragen der der unteren Bit mit E low
 
-    waitXus(250);
-
     i2c_stop();
+    
+    #ifndef wait_by_busy
+    //waitXus(250);
+    wait_us(50);
+    //50 us warten
+    #endif
 }
 
 void send_4(char deviceid, unsigned int data, int type) {
@@ -131,156 +143,141 @@ void send_4(char deviceid, unsigned int data, int type) {
     i2c_write((data << 4) | ENABLE | BACKLIGHT | select);
     //übertragen der der oberen Bit mit E high
 
-    waitXus(1);
+    //waitXus(1);
+    wait_us(1);
+    //1 us warten
 
     i2c_write((data << 4) | BACKLIGHT | select);
     //übertragen der der oberen Bit mit E low
     i2c_stop();
 
-    waitXus(250);
+    #ifndef wait_by_busy
+    //waitXus(250);
+    wait_us(50);
+    //50 us warten
+    #endif
 }
 
 int check_bf(char deviceid) {
     //ließt des Status des busy flags aus und übergibt ihn
-
-    unsigned char bf = 0;
-    unsigned char upper = 0;
-    unsigned char lower = 0;
-    unsigned char temp = 0;
-
-    i2c_start();
-    //Neustart des Bus
-    i2c_write((deviceid << 1) | 0x01);
-    //ansprechen des Slaves mit Lesebefehl
-    temp = i2c_read(16);
-    //Funktion muss auch vor dem Einstellen der 4 Bit operation funktionieren
-    //eigentlich nur die oberen 4 Bit interessant, deshalb nur einmaliges Lesen
-    //zurückgegebene Bits entsprechen: DB7 DB6 DB5 DB4 ...
-    i2c_stop();
-    //stoppen des Bus
-    upper = temp & 0xF000;
-    upper = upper >> 8;
-    lower = temp & 0x00F0;
-    lower = lower >> 4;
-    temp = upper + lower;
-
+    
+    char read=0;
+    
     i2c_start();
     //starten des Bus
     i2c_write(deviceid << 1);
     //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(upper | ENABLE | BACKLIGHT | RW);
+    
+    i2c_write(0x00 | BACKLIGHT | RW);
+    //Schreiben der busy flag read instruction mit enable low
+    
+    //waitXus(1);
+    wait_us(1);
+    //1 us warten
+    
+    i2c_write(0x00 | ENABLE | BACKLIGHT | RW);
     //Schreiben der busy flag read instruction mit enable high
 
-    waitXus(1);
-
-    i2c_write(upper | BACKLIGHT | RW);
-    //Schreiben der busy flag read instruction mit enable low
-
-    waitXus(250);
-
-    i2c_write(lower | ENABLE | BACKLIGHT | RW);
-    //Schreiben der busy flag read instruction mit enable high
-
-    waitXus(1);
-
-    i2c_write(lower | BACKLIGHT | RW);
-    //Schreiben der busy flag read instruction mit enable low
-
-    i2c_stop();
-
-    waitXus(250);
-
-    i2c_start();
-    //Neustart des Bus
-    i2c_write((deviceid << 1) | 0x01);
-    //ansprechen des Slaves mit Lesebefehl
-    temp = i2c_read(16);
-    //Funktion muss auch vor dem Einstellen der 4 Bit operation funktionieren
-    //eigentlich nur die oberen 4 Bit interessant, deshalb nur einmaliges Lesen
-    //zurückgegebene Bits entsprechen: DB7 DB6 DB5 DB4 ...
-    i2c_stop();
-    //stoppen des Bus
-    upper = temp & 0xF000;
-    upper = upper >> 8;
-    lower = temp & 0x00F0;
-    lower = lower >> 4;
-    temp = upper + lower;
-
-    i2c_start();
-    //starten des Bus
-    i2c_write(deviceid << 1);
-    //ansprechen des Slaves mit Schreibbefehl
-    i2c_write(upper | ENABLE | BACKLIGHT);
-    //Schreiben der busy flag read instruction mit enable high
-
-    waitXus(1);
-
-    i2c_write(upper | BACKLIGHT);
-    //Schreiben der busy flag read instruction mit enable low
-
-    waitXus(250);
-
-    i2c_write(lower | ENABLE | BACKLIGHT);
-    //Schreiben der busy flag read instruction mit enable high
-
-    waitXus(1);
-
-    i2c_write(lower | BACKLIGHT);
-    //Schreiben der busy flag read instruction mit enable low
-
-    i2c_stop();
-
-    waitXus(250);
-
+    //waitXus(1);
+    wait_us(1);
+    //1 us warten
+    
     i2c_restart();
     //Neustart des Bus
+    
     i2c_write((deviceid << 1) | 0x01);
     //ansprechen des Slaves mit Lesebefehl
-    bf = i2c_read(8);
-    //Funktion muss auch vor dem Einstellen der 4 Bit operation funktionieren
-    //eigentlich nur die oberen 4 Bit interessant, deshalb nur einmaliges Lesen
-    //zurückgegebene Bits entsprechen: DB7 DB6 DB5 DB4 ...
-    i2c_stop();
-    //stoppen des Bus
+    read = i2c_read(8);
+    //zurückgegebene Bits entsprechen: DB7 DB6 DB5 DB4 BACKLIGHT ENABLE RW RS
+    
+    i2c_restart();
+    //Neustart des Bus
+    i2c_write(deviceid << 1);
+    //ansprechen des Slaves mit Schreibbefehl
+    
+    i2c_write(0x00 | BACKLIGHT | RW);
+    //Schreiben der busy flag read instruction mit enable low
+    
+    //waitXus(1);
+    wait_us(1);
+    //1 us warten
+    
+    i2c_write(0x00 | ENABLE | BACKLIGHT | RW);
+    //Schreiben der busy flag read instruction mit enable high
+    
+    //waitXus(1);
+    wait_us(1);
+    //1 us warten
 
-    if (bf & 0x80) return 1;
-        //busy flag up!
+    i2c_write(0x00 | BACKLIGHT | RW);
+    //Schreiben der busy flag read instruction mit enable low
+    
+    i2c_stop();
+
+    if (read & 0x80) return 1;
+    //busy flag up!
     else return 0;
     //no busy flag
 }
 
 void display_clear(char deviceid) {
     //leert das gesamte Display
-    //while (check_bf(deviceid));
-    //wait for busy flag to clear
-    waitXus(250);
+    
+    #ifdef wait_by_busy
+    while(check_bf(deviceid));
+    #else
+    //waitXus(250);
+    wait_us(50);
+    //50 us warten
+    #endif
     
     send_8(deviceid, 0b00000001, 0);
 }
 
 void display_init(char deviceid) {
+    
+    #ifdef wait_by_busy
+    while(check_bf(deviceid));
+    #else
+    //waitXus(250);
+    wait_us(50);
+    //50 us warten
+    #endif
+
     send_4(deviceid, 0b0010, 0);
     //initial 4 Bit
-    //waitXus(21500);
-    //while (check_bf(deviceid));
-    //wait for busy flag to clear
-    waitXus(250);
+    
+    #ifdef wait_by_busy
+    while(check_bf(deviceid));
+    #else
+    //waitXus(250);
+    wait_us(50);
+    //50 us warten
+    #endif
 
     send_8(deviceid, 0b00101000, 0);
     //übertragen der function set Anweisung
     //4 Bit mode, 2 lines, 5x8 dots
-    //waitXus(21500);
-    //while (check_bf(deviceid));
-    //wait for busy flag to clear
-    waitXus(250);
+    
+    #ifdef wait_by_busy
+    while(check_bf(deviceid));
+    #else
+    //waitXus(250);
+    wait_us(50);
+    //50 us warten
+    #endif
 
     send_8(deviceid, 0b00001110, 0);
     //übertragen einer instruction set Anweisung
     //display & cursor on, blinking cursor on
-
-    //while (check_bf(deviceid));
-    //wait for busy flag to clear
-    waitXus(250);
+    
+    #ifdef wait_by_busy
+    while(check_bf(deviceid));
+    #else
+    //waitXus(250);
+    wait_us(50);
+    //50 us warten
+    #endif
 
     send_8(deviceid, 0b00000110, 0);
     //übertragen einer instruction set Anweisung
@@ -294,8 +291,13 @@ void display_init(char deviceid) {
 
 void display_write(char deviceid, char *pointer) {
     while (*pointer) {
-        //while (check_bf(deviceid));
-        waitXus(250);
+        #ifdef wait_by_busy
+        while(check_bf(deviceid));
+        #else
+        //waitXus(250);
+        wait_us(50);
+        //50 us warten
+        #endif
         send_8(deviceid, *pointer, 1);
         pointer++;
     }
@@ -323,7 +325,12 @@ void cursor_move(char deviceid, int zeile, int stelle) {
             stelle = 0;
             break;
     }
-    //while(check_bf(deviceid));
-    waitXus(250);
+    #ifdef wait_by_busy
+    while(check_bf(deviceid));
+    #else
+    //waitXus(250);
+    wait_us(50);
+    //50 us warten
+    #endif
     send_8(deviceid, stelle | 0x80, 0);
 }
