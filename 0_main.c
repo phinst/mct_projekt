@@ -18,7 +18,7 @@
 #define pin_k 23
 //Pinnummern der Knöpfe
 
-#define pin_out 20
+#define pin_out 14
 //Pinnummer des Outputs
 
 #define long_max 260
@@ -81,7 +81,7 @@ void draw_update(){
             //Puls 1 in Modus 1 wurde geändert
             cursor_move(deviceid, 2, 12);
             display_write(deviceid, p_long);
-            cursor_move(deviceid, 2, 15);
+            cursor_move(deviceid, 2, 14);
             //move cursor to 1st pulse
             break;
         case 2:
@@ -89,14 +89,14 @@ void draw_update(){
                 //Puls 1 in Modus 2 wurde geändert
                 cursor_move(deviceid, 2, 12);
                 display_write(deviceid, p_short);
-                cursor_move(deviceid, 2, 15);
+                cursor_move(deviceid, 2, 14);
                 //move cursor to 1st pulse
             }
             else if(select == 2){
                 //Puls 2 in Modus 2 wurde geändert
                 cursor_move(deviceid, 3, 12);
                 display_write(deviceid, p_long);
-                cursor_move(deviceid, 3, 15);
+                cursor_move(deviceid, 3, 14);
                 //move cursor to 2nd pulse
             }
             break;
@@ -113,7 +113,6 @@ void draw_mode(){
     char m2_line3[] = "pulse 2:";
     
     char menu_k[] = "mode   +    -   ok  ";
-    //char menu_s[] = "mode   +    -  start";
     
     display_clear(deviceid);
     cursor_move(deviceid, 4, 1);
@@ -140,7 +139,7 @@ void draw_mode(){
         display_write(deviceid, p_long);
     }
     
-    cursor_move(deviceid, 2, 15);
+    cursor_move(deviceid, 2, 14);
     //move cursor to 1st pulse
 }
 
@@ -149,11 +148,14 @@ void interaction(void){
         //Button gedrückt worden?
         switch(cn_value[1]){
             case pin_mode:
-                if(mode == 1) mode=2;
-                else mode=1;
+                if(mode == 1){
+                    mode=2;
+                    select=1;
+                }
+                else{
+                    mode=1;
+                }
                 //aktualisieren des Modus
-                display_clear(deviceid);
-                display_clear(deviceid);
                 draw_mode();
                 //neuen Modus anzeigen
                 break;
@@ -203,12 +205,12 @@ void interaction(void){
                     if(mode == 2){
                         if(select == 1){
                             select=2;
-                            cursor_move(deviceid, 3, 15);
+                            cursor_move(deviceid, 3, 14);
                             //move cursor to 2nd pulse
                         }
                         else{
                             select=1;
-                            cursor_move(deviceid, 2, 15);
+                            cursor_move(deviceid, 2, 14);
                             //move cursor to 1st pulse
                         }
                     }

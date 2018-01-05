@@ -232,6 +232,7 @@ void display_clear(char deviceid) {
     #endif
     
     send_8(deviceid, 0b00000001, 0);
+    wait_ms(50);
 }
 
 void display_init(char deviceid) {
@@ -333,4 +334,5 @@ void cursor_move(char deviceid, int zeile, int stelle) {
     //50 us warten
     #endif
     send_8(deviceid, stelle | 0x80, 0);
+    wait_us(50);
 }
