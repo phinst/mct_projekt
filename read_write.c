@@ -132,7 +132,3 @@ void __attribute__((__interrupt__, no_auto_psv)) _ADC1Interrupt(void){
     IFS0bits.AD1IF = 0; 
     // Clear AD1 Interrupt Flag
 }
-
-void a_write(int pinnummer){
-    //dac?
-}
