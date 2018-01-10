@@ -60,32 +60,6 @@
 
 //#define wait_by_busy
 
-/*int timecount = 0;
-
-void waitXus(int val) {
-    //Werte für das Warten mit Timer 4:
-    //21500: 4,3 ms
-    //600: 120us
-    //250: 50us
-
-    timecount = 0;
-    set_timer4(0, val, 16);
-    while (timecount == 0);
-    timecount = 0;
-    T4CONbits.TON = 0;
-    //Disable Timer 4
-}
-
-void __attribute__((__interrupt__, no_auto_psv)) _T4Interrupt(void) {
-
-    timecount++;
-
-    //T4CONbits.TON = 0;
-    //Timer 4 wieder ausschalten
-    IFS1bits.T4IF = 0;
-    //Clear Timer 4 Interrupt Flag
-}*/
-
 void send_8(char deviceid, unsigned int data, int type) {
     //data: 8 Bit, MSB DB7 ... DB0 LSB
     //type: 0 instructions (RW 0, RS 0), 1 DDRAM (RW 0, RS 1)
@@ -100,21 +74,18 @@ void send_8(char deviceid, unsigned int data, int type) {
     i2c_write((data & 0xF0) | ENABLE | BACKLIGHT | select);
     //übertragen der der oberen Bit mit E high
 
-    //waitXus(1);
     wait_us(1);
     //1 us warten
 
     i2c_write((data & 0xF0) | BACKLIGHT | select);
     //übertragen der der oberen Bit mit E low
     
-    //waitXus(250);
     wait_us(50);
     //50 us warten
 
     i2c_write((data << 4) | ENABLE | BACKLIGHT | select);
     //übertragen der der unteren Bit mit E high
 
-    //waitXus(1);
     wait_us(1);
     //1 us warten
 
@@ -124,7 +95,6 @@ void send_8(char deviceid, unsigned int data, int type) {
     i2c_stop();
     
     #ifndef wait_by_busy
-    //waitXus(250);
     wait_us(50);
     //50 us warten
     #endif
@@ -143,7 +113,6 @@ void send_4(char deviceid, unsigned int data, int type) {
     i2c_write((data << 4) | ENABLE | BACKLIGHT | select);
     //übertragen der der oberen Bit mit E high
 
-    //waitXus(1);
     wait_us(1);
     //1 us warten
 
@@ -152,15 +121,14 @@ void send_4(char deviceid, unsigned int data, int type) {
     i2c_stop();
 
     #ifndef wait_by_busy
-    //waitXus(250);
     wait_us(50);
     //50 us warten
     #endif
 }
 
 int check_bf(char deviceid) {
+    //nicht benutzen, läuft nicht!!!
     //ließt des Status des busy flags aus und übergibt ihn
-    
     char read=0;
     
     i2c_start();
@@ -170,15 +138,13 @@ int check_bf(char deviceid) {
     
     i2c_write(0x00 | BACKLIGHT | RW);
     //Schreiben der busy flag read instruction mit enable low
-    
-    //waitXus(1);
+
     wait_us(1);
     //1 us warten
     
     i2c_write(0x00 | ENABLE | BACKLIGHT | RW);
     //Schreiben der busy flag read instruction mit enable high
 
-    //waitXus(1);
     wait_us(1);
     //1 us warten
     
@@ -197,15 +163,13 @@ int check_bf(char deviceid) {
     
     i2c_write(0x00 | BACKLIGHT | RW);
     //Schreiben der busy flag read instruction mit enable low
-    
-    //waitXus(1);
+
     wait_us(1);
     //1 us warten
     
     i2c_write(0x00 | ENABLE | BACKLIGHT | RW);
     //Schreiben der busy flag read instruction mit enable high
-    
-    //waitXus(1);
+
     wait_us(1);
     //1 us warten
 
@@ -226,7 +190,6 @@ void display_clear(char deviceid) {
     #ifdef wait_by_busy
     while(check_bf(deviceid));
     #else
-    //waitXus(250);
     wait_us(50);
     //50 us warten
     #endif
@@ -240,7 +203,6 @@ void display_init(char deviceid) {
     #ifdef wait_by_busy
     while(check_bf(deviceid));
     #else
-    //waitXus(250);
     wait_us(50);
     //50 us warten
     #endif
@@ -251,7 +213,6 @@ void display_init(char deviceid) {
     #ifdef wait_by_busy
     while(check_bf(deviceid));
     #else
-    //waitXus(250);
     wait_us(50);
     //50 us warten
     #endif
@@ -263,7 +224,6 @@ void display_init(char deviceid) {
     #ifdef wait_by_busy
     while(check_bf(deviceid));
     #else
-    //waitXus(250);
     wait_us(50);
     //50 us warten
     #endif
@@ -275,7 +235,6 @@ void display_init(char deviceid) {
     #ifdef wait_by_busy
     while(check_bf(deviceid));
     #else
-    //waitXus(250);
     wait_us(50);
     //50 us warten
     #endif
@@ -291,11 +250,11 @@ void display_init(char deviceid) {
 }
 
 void display_write(char deviceid, char *pointer) {
+    //max. 20 Zeichen verwenden!!!
     while (*pointer) {
         #ifdef wait_by_busy
         while(check_bf(deviceid));
         #else
-        //waitXus(250);
         wait_us(50);
         //50 us warten
         #endif
@@ -308,7 +267,7 @@ void display_write(char deviceid, char *pointer) {
 void cursor_move(char deviceid, int zeile, int stelle) {
     //setzt den cursor an eine Position nach Zeile und Spalte
     //Cursorwert 0-19 entspricht der 1. Zeile, 20-39 der 3. Zeile
-    //Cursorwert 40, 65-83 entspricht der 2. Zeile, 84-103 der 4. Zeile
+    //Cursorwert 40, 64-83 entspricht der 2. Zeile, 84-103 der 4. Zeile
     switch (zeile) {
         case 1:
             stelle -= 1;
@@ -329,10 +288,11 @@ void cursor_move(char deviceid, int zeile, int stelle) {
     #ifdef wait_by_busy
     while(check_bf(deviceid));
     #else
-    //waitXus(250);
     wait_us(50);
     //50 us warten
     #endif
     send_8(deviceid, stelle | 0x80, 0);
+    //senden des Befehls
     wait_us(50);
+    //50 us warten
 }
